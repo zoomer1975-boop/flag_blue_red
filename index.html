@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>청기백기 — 계명대 통계학과 오락연구소</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 화면 1: 홈 -->
+  <div id="screen-home" class="screen active">
+    <div class="logo">
+      <div class="logo-sub">계명대학교 통계학과 오락연구소</div>
+      <h1 class="logo-title">청기<span class="white">백기</span></h1>
+    </div>
+    <div class="mode-buttons">
+      <button class="btn btn-blue" id="btn-single">🙋 싱글 플레이</button>
+      <button class="btn btn-white" id="btn-multi">👥 1v1 온라인</button>
+    </div>
+    <div class="footer-credit">Keimyung Univ. Dept. of Statistics · Entertainment Lab</div>
+  </div>
+
+  <!-- 화면 2: 멀티 로비 -->
+  <div id="screen-lobby" class="screen">
+    <button class="btn-back" id="lobby-back">← 뒤로</button>
+    <h2>1v1 온라인</h2>
+    <div class="lobby-options">
+      <button class="btn btn-blue" id="btn-create">방 만들기</button>
+      <div class="divider">또는</div>
+      <div class="join-row">
+        <input type="text" id="room-code-input" placeholder="Peer ID 입력" maxlength="50">
+        <button class="btn btn-white" id="btn-join">참가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 화면 3: 대기 -->
+  <div id="screen-waiting" class="screen">
+    <h2 id="waiting-title">방 생성 중...</h2>
+    <div id="room-code-display" class="room-code"></div>
+    <p id="waiting-desc">상대방에게 방 코드를 공유하세요</p>
+    <div class="spinner"></div>
+    <button class="btn btn-ghost" id="waiting-cancel">취소</button>
+  </div>
+
+  <!-- 화면 4: 게임 -->
+  <div id="screen-game" class="screen">
+    <!-- 상단: 플레이어 정보 -->
+    <div class="hud">
+      <div class="player-info" id="hud-me">
+        <span class="player-label" id="hud-me-label">나</span>
+        <div class="hearts" id="hearts-me"></div>
+      </div>
+      <div class="vs-badge" id="vs-badge">VS</div>
+      <div class="player-info right" id="hud-opponent" style="display:none">
+        <span class="player-label">상대</span>
+        <div class="hearts" id="hearts-opp"></div>
+      </div>
+    </div>
+
+    <!-- 명령 표시 -->
+    <div class="command-area">
+      <div class="command-text" id="command-text">준비...</div>
+      <div class="command-timer" id="command-timer"></div>
+    </div>
+
+    <!-- 깃발 버튼 -->
+    <div class="flags">
+      <div class="flag-col">
+        <div class="flag-visual" id="flag-blue-visual">
+          <div class="flag-pole"></div>
+          <div class="flag-cloth blue-cloth" id="flag-blue-cloth"></div>
+        </div>
+        <div class="flag-btns">
+          <button class="flag-btn up" data-flag="blue" data-action="up" id="btn-blue-up">청기 올리기 ↑</button>
+          <button class="flag-btn down" data-flag="blue" data-action="down" id="btn-blue-down">청기 내리기 ↓</button>
+        </div>
+      </div>
+      <div class="flag-col">
+        <div class="flag-visual" id="flag-white-visual">
+          <div class="flag-pole"></div>
+          <div class="flag-cloth white-cloth" id="flag-white-cloth"></div>
+        </div>
+        <div class="flag-btns">
+          <button class="flag-btn up" data-flag="white" data-action="up" id="btn-white-up">백기 올리기 ↑</button>
+          <button class="flag-btn down" data-flag="white" data-action="down" id="btn-white-down">백기 내리기 ↓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 라운드/점수 -->
+    <div class="round-info">
+      <span id="round-display">라운드 1</span>
+      <span id="score-display">점수 0</span>
+    </div>
+  </div>
+
+  <!-- 화면 5: 결과 -->
+  <div id="screen-result" class="screen">
+    <div class="result-emoji" id="result-emoji">🎉</div>
+    <h2 id="result-title">승리!</h2>
+    <p id="result-sub"></p>
+    <div class="result-stats" id="result-stats"></div>
+    <div class="result-buttons">
+      <button class="btn btn-blue" id="btn-retry">다시하기</button>
+      <button class="btn btn-ghost" id="btn-home">홈으로</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
