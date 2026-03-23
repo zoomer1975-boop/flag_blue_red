@@ -1,117 +1,332 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <base href="/flag_blue_red/">
+  <base href="./">
   <title>청기백기 — 계명대 통계학과 오락연구소</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <!-- SEO & Meta -->
+  <meta name="description" content="계명대학교 통계학과 오락연구소에서 만든 귀여운 토끼와 함께하는 청기백기 게임.">
+
+  <!-- Font -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            blue: {
+              400: '#60A5FA',
+              500: '#3B82F6',
+              600: '#2563EB',
+            },
+            neutral: {
+              800: '#1F2937',
+              900: '#111827',
+              950: '#030712'
+            }
+          },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'bounce-slow': 'bounce 3s infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' },
+            }
+          }
+        },
+      },
+    }
+  </script>
+
+  <!-- Icons -->
+  <script src="https://code.iconify.design/iconify-icon/2.3.0/iconify-icon.min.js"></script>
+
+  <!-- PeerJS -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+  <!-- Custom Styles -->
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
 
-  <!-- 화면 1: 홈 -->
-  <div id="screen-home" class="screen active">
-    <div class="logo">
-      <div class="logo-sub">계명대학교 통계학과 오락연구소</div>
-      <h1 class="logo-title">청기<span class="white">백기</span></h1>
-    </div>
-    <div class="mode-buttons">
-      <button class="btn btn-blue" id="btn-single">🙋 싱글 플레이</button>
-      <button class="btn btn-white" id="btn-multi">👥 1v1 온라인</button>
-    </div>
-    <div class="footer-credit">Keimyung Univ. Dept. of Statistics · Entertainment Lab</div>
+<body
+  class="bg-neutral-950 text-white min-h-[100dvh] overflow-hidden flex flex-col font-sans selection:bg-blue-500/30 selection:text-white">
+
+  <!-- Background Decoration -->
+  <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+    <div class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px]"></div>
+    <div class="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px]"></div>
   </div>
 
-  <!-- 화면 2: 멀티 로비 -->
-  <div id="screen-lobby" class="screen">
-    <button class="btn-back" id="lobby-back">← 뒤로</button>
-    <h2>1v1 온라인</h2>
-    <div class="lobby-options">
-      <button class="btn btn-blue" id="btn-create">방 만들기</button>
-      <div class="divider">또는</div>
-      <div class="join-row">
-        <input type="text" id="room-code-input" placeholder="Peer ID 입력" maxlength="50">
-        <button class="btn btn-white" id="btn-join">참가</button>
+  <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex-grow flex flex-col">
+
+    <!-- Header -->
+    <header class="py-6 flex justify-between items-center w-full">
+      <div class="flex items-center gap-2 text-white/70">
+        <iconify-icon icon="solar:gamepad-bold" class="text-xl text-blue-400"></iconify-icon>
+        <span class="text-sm font-medium tracking-wide">계명대학교 통계학과 오락연구소</span>
       </div>
-    </div>
-  </div>
 
-  <!-- 화면 3: 대기 -->
-  <div id="screen-waiting" class="screen">
-    <h2 id="waiting-title">방 생성 중...</h2>
-    <div id="room-code-display" class="room-code"></div>
-    <p id="waiting-desc">상대방에게 방 코드를 공유하세요</p>
-    <div class="spinner"></div>
-    <button class="btn btn-ghost" id="waiting-cancel">취소</button>
-  </div>
+    </header>
 
-  <!-- 화면 4: 게임 -->
-  <div id="screen-game" class="screen">
-    <!-- 상단: 플레이어 정보 -->
-    <div class="hud">
-      <div class="player-info" id="hud-me">
-        <span class="player-label" id="hud-me-label">나</span>
-        <div class="hearts" id="hearts-me"></div>
-      </div>
-      <div class="vs-badge" id="vs-badge">VS</div>
-      <div class="player-info right" id="hud-opponent" style="display:none">
-        <span class="player-label">상대</span>
-        <div class="hearts" id="hearts-opp"></div>
-      </div>
-    </div>
+    <!-- Main Content Area (Screens) -->
+    <main class="flex-grow flex items-center justify-center relative w-full h-full pb-10">
 
-    <!-- 명령 표시 -->
-    <div class="command-area">
-      <div class="command-text" id="command-text">준비...</div>
-      <div class="command-timer" id="command-timer"></div>
-    </div>
-
-    <!-- 깃발 버튼 -->
-    <div class="flags">
-      <div class="flag-col">
-        <div class="flag-visual" id="flag-blue-visual">
-          <div class="flag-pole"></div>
-          <div class="flag-cloth blue-cloth" id="flag-blue-cloth"></div>
+      <!-- Screen 1: Home -->
+      <div id="screen-home" class="screen active text-center w-full max-w-2xl mx-auto flex flex-col items-center">
+        <!-- SVG Rabbit Graphic for Identity -->
+        <div class="w-48 h-48 mb-8 animate-float">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(100, 100)">
+              <rect x="-80" y="-80" width="160" height="160" rx="40" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="2" />
+              <text x="0" y="20" font-size="80" text-anchor="middle" dominant-baseline="middle" id="preview-emoji">🐰</text>
+            </g>
+          </svg>
         </div>
-        <div class="flag-btns">
-          <button class="flag-btn up" data-flag="blue" data-action="up" id="btn-blue-up">청기 올리기 ↑</button>
-          <button class="flag-btn down" data-flag="blue" data-action="down" id="btn-blue-down">청기 내리기 ↓</button>
+
+        <h1
+          class="text-5xl md:text-7xl font-bold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">
+          청기<span class="text-blue-500">백기</span>
+        </h1>
+        <p class="text-lg md:text-xl text-white/60 mb-8 break-keep-all max-w-md mx-auto">
+          귀여운 십이간지 동물들과 함께 순발력을 테스트해 보세요. 혼자서 연습하거나 친구와 대결할 수 있습니다.
+        </p>
+
+        <div class="mb-10 flex flex-col items-center">
+          <p class="text-white/50 text-sm mb-3">캐릭터를 선택하세요</p>
+          <div class="flex flex-wrap justify-center gap-2 max-w-sm" id="character-select">
+            <!-- JS will populate the 12 zodiac buttons here -->
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <button class="btn-primary group" id="btn-single">
+            <span class="relative z-10 flex items-center justify-center gap-2">
+              <iconify-icon icon="solar:user-bold"></iconify-icon> 싱글 플레이 시작
+            </span>
+          </button>
+          <button class="btn-secondary group" id="btn-multi">
+            <span class="relative z-10 flex items-center justify-center gap-2">
+              <iconify-icon icon="solar:users-group-two-rounded-bold"></iconify-icon> 친구와 대결하기
+            </span>
+          </button>
         </div>
       </div>
-      <div class="flag-col">
-        <div class="flag-visual" id="flag-white-visual">
-          <div class="flag-pole"></div>
-          <div class="flag-cloth white-cloth" id="flag-white-cloth"></div>
-        </div>
-        <div class="flag-btns">
-          <button class="flag-btn up" data-flag="white" data-action="up" id="btn-white-up">백기 올리기 ↑</button>
-          <button class="flag-btn down" data-flag="white" data-action="down" id="btn-white-down">백기 내리기 ↓</button>
+
+      <!-- Screen 2: Lobby -->
+      <div id="screen-lobby" class="screen w-full max-w-md mx-auto relative glass-panel p-8 rounded-3xl">
+        <button class="absolute -top-12 left-0 text-white/60 hover:text-white flex items-center gap-2 transition-colors"
+          id="lobby-back">
+          <iconify-icon icon="solar:arrow-left-linear"></iconify-icon> 홈으로
+        </button>
+
+        <h2 class="text-2xl font-bold mb-6 text-center">온라인 대결</h2>
+
+        <div class="space-y-6">
+          <button class="w-full btn-primary py-4" id="btn-create">
+            <div class="flex items-center justify-center gap-2">
+              <iconify-icon icon="solar:add-circle-bold"></iconify-icon> 새로운 방 만들기
+            </div>
+          </button>
+
+          <div class="flex items-center gap-4 text-white/40">
+            <div class="h-px bg-white/10 flex-grow"></div>
+            <span class="text-sm">또는 코드로 참가</span>
+            <div class="h-px bg-white/10 flex-grow"></div>
+          </div>
+
+          <div class="flex gap-2">
+            <input type="text" id="room-code-input" placeholder="방 코드 (Peer ID) 입력"
+              class="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-center font-mono">
+            <button class="btn-primary w-24 px-0" id="btn-join">참가</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 라운드/점수 -->
-    <div class="round-info">
-      <span id="round-display">라운드 1</span>
-      <span id="score-display">점수 0</span>
-    </div>
-  </div>
+      <!-- Screen 3: Waiting -->
+      <div id="screen-waiting" class="screen w-full max-w-md mx-auto text-center glass-panel p-8 rounded-3xl">
+        <div class="mb-6 flex justify-center">
+          <div class="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
 
-  <!-- 화면 5: 결과 -->
-  <div id="screen-result" class="screen">
-    <div class="result-emoji" id="result-emoji">🎉</div>
-    <h2 id="result-title">승리!</h2>
-    <p id="result-sub"></p>
-    <div class="result-stats" id="result-stats"></div>
-    <div class="result-buttons">
-      <button class="btn btn-blue" id="btn-retry">다시하기</button>
-      <button class="btn btn-ghost" id="btn-home">홈으로</button>
-    </div>
+        <h2 class="text-2xl font-bold mb-2" id="waiting-title">방 생성 중...</h2>
+        <p class="text-white/60 mb-6" id="waiting-desc">잠시만 기다려주세요</p>
+
+        <div
+          class="bg-black/40 border border-white/10 rounded-xl p-4 mb-6 cursor-pointer hover:bg-black/60 transition-colors group relative"
+          title="클릭하여 복사">
+          <div class="text-sm text-white/40 mb-1">나의 방 코드</div>
+          <div id="room-code-display" class="font-mono text-xl text-blue-400 font-bold break-all"></div>
+          <div
+            class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/80 rounded-xl backdrop-blur-sm transition-opacity">
+            <span class="text-white font-medium flex items-center gap-2"><iconify-icon
+                icon="solar:copy-bold"></iconify-icon> 복사하기</span>
+          </div>
+        </div>
+
+        <button class="btn-ghost" id="waiting-cancel">취소하고 나가기</button>
+      </div>
+
+      <!-- Screen 4: Game -->
+      <div id="screen-game" class="screen w-full h-full flex flex-col relative justify-center">
+
+        <!-- HUD Overlay -->
+        <div class="absolute top-0 left-0 w-full flex justify-between items-start z-20">
+          <!-- My Stats -->
+          <div class="glass-panel px-4 py-2 rounded-2xl flex flex-col items-center gap-1" id="hud-me">
+            <span class="text-xs text-white/50 tracking-wider">플레이어 1</span>
+            <div class="flex gap-1 text-xl" id="hearts-me"></div>
+          </div>
+
+          <!-- Round/Score info -->
+          <div class="flex flex-col items-center">
+            <div class="bg-white text-black px-4 py-1 rounded-full text-sm font-bold mb-1" id="round-display">ROUND 1
+            </div>
+            <div class="text-blue-400 font-mono font-bold text-lg" id="score-display">SCORE 0</div>
+          </div>
+
+          <!-- Opponent Stats (Multi) -->
+          <div class="glass-panel px-4 py-2 rounded-2xl flex flex-col items-center gap-1 opacity-0 transition-opacity"
+            id="hud-opponent">
+            <span class="text-xs text-white/50 tracking-wider">상대방</span>
+            <div class="flex gap-1 text-xl" id="hearts-opp"></div>
+          </div>
+        </div>
+
+        <!-- VS Badge for Multi -->
+        <div
+          class="absolute top-4 left-1/2 -translate-x-1/2 -ml-[120px] bg-red-500/80 text-white text-xs font-bold px-2 py-0.5 rounded opacity-0 transition-opacity"
+          id="vs-badge">VS</div>
+
+        <!-- Command Area -->
+        <div class="mt-8 mb-4 sm:mb-8 text-center relative z-20 w-full max-w-md mx-auto">
+          <div class="glass-panel py-6 px-4 rounded-3xl relative overflow-hidden">
+            <!-- Progress Bar -->
+            <div class="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-100 ease-linear w-full"
+              id="command-timer"></div>
+
+            <h2 class="text-3xl sm:text-4xl font-black tracking-tight" id="command-text">준비...</h2>
+          </div>
+        </div>
+
+        <!-- Character Area -->
+        <div
+          class="relative w-full flex-grow flex items-center justify-center max-h-[50vh] min-h-[300px] z-10 character-container">
+          <!-- SVG Rabbit -->
+          <svg viewBox="0 0 400 400" class="w-full max-w-[400px] h-full rabbit-svg">
+            <defs>
+              <linearGradient id="flagBlue" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#3B82F6" />
+                <stop offset="100%" stop-color="#1D4ED8" />
+              </linearGradient>
+              <linearGradient id="flagWhite" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#FFFFFF" />
+                <stop offset="100%" stop-color="#E5E7EB" />
+              </linearGradient>
+            </defs>
+
+            <!-- Body -->
+            <g id="rabbit-body" class="transition-transform duration-300">
+              <ellipse cx="200" cy="280" rx="60" ry="70" fill="#f8f9fa" />
+              <!-- Head (Emoji Replacement) -->
+              <text x="200" y="180" font-size="120" text-anchor="middle" dominant-baseline="middle" id="game-emoji">🐰</text>
+            </g>
+
+            <!-- Blue Flag Arm (Left Side) -->
+            <g id="arm-blue" class="arm-group arm-middle" transform-origin="150 240">
+              <!-- Arm -->
+              <path d="M 155 240 L 80 240" stroke="#f8f9fa" stroke-width="18" stroke-linecap="round" />
+              <!-- Hand -->
+              <circle cx="75" cy="240" r="12" fill="#f8f9fa" />
+              <!-- Pole -->
+              <rect x="-30" y="236" width="120" height="8" fill="#8B4513" rx="4" />
+              <!-- Flag Cloth -->
+              <path d="M 40 244 L -20 254 L -20 304 L 40 294 Z" fill="url(#flagBlue)" />
+            </g>
+
+            <!-- White Flag Arm (Right Side) -->
+            <g id="arm-white" class="arm-group arm-middle" transform-origin="250 240">
+              <!-- Arm -->
+              <path d="M 245 240 L 320 240" stroke="#f8f9fa" stroke-width="18" stroke-linecap="round" />
+              <!-- Hand -->
+              <circle cx="325" cy="240" r="12" fill="#f8f9fa" />
+              <!-- Pole -->
+              <rect x="310" y="236" width="120" height="8" fill="#8B4513" rx="4" />
+              <!-- Flag Cloth -->
+              <path d="M 360 244 L 420 254 L 420 304 L 360 294 Z" fill="url(#flagWhite)" />
+            </g>
+          </svg>
+        </div>
+
+        <!-- Controls (Bottom) -->
+        <div class="mt-auto z-20 w-full max-w-2xl mx-auto flex flex-col gap-4">
+          <!-- Grid for buttons -->
+          <div class="grid grid-cols-2 gap-4 w-full">
+            <div class="flex flex-col gap-2">
+              <button class="control-btn blue bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/50 text-blue-100"
+                data-flag="blue" data-action="up" id="btn-blue-up">
+                <iconify-icon icon="solar:round-arrow-up-bold" class="text-xl"></iconify-icon> 청기 올리기
+              </button>
+              <button class="control-btn blue bg-blue-900/40 hover:bg-blue-900/60 border-blue-900/50 text-blue-200/50"
+                data-flag="blue" data-action="down" id="btn-blue-down">
+                <iconify-icon icon="solar:round-arrow-down-bold" class="text-xl"></iconify-icon> 청기 내리기
+              </button>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <button class="control-btn white bg-white/20 hover:bg-white/30 border-white/50 text-white"
+                data-flag="white" data-action="up" id="btn-white-up">
+                <iconify-icon icon="solar:round-arrow-up-bold" class="text-xl"></iconify-icon> 백기 올리기
+              </button>
+              <button class="control-btn white bg-gray-600/40 hover:bg-gray-600/60 border-gray-600/50 text-white/50"
+                data-flag="white" data-action="down" id="btn-white-down">
+                <iconify-icon icon="solar:round-arrow-down-bold" class="text-xl"></iconify-icon> 백기 내리기
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Screen 5: Result -->
+      <div id="screen-result"
+        class="screen w-full max-w-md mx-auto text-center glass-panel p-10 rounded-3xl relative overflow-hidden">
+        <!-- Confetti decoration logic in css -->
+        <div class="result-emoji text-6xl mb-4 animate-bounce" id="result-emoji">🎉</div>
+        <h2 class="text-4xl font-black tracking-tight mb-2" id="result-title">승리!</h2>
+        <p class="text-lg text-white/60 mb-8 font-medium" id="result-sub">훌륭합니다!</p>
+
+        <div class="grid grid-cols-2 gap-4 mb-10" id="result-stats">
+          <div class="bg-black/30 rounded-2xl p-4 border border-white/5">
+            <div class="text-sm text-white/40 mb-1">최종 점수</div>
+            <div class="text-3xl font-bold text-blue-400">0</div>
+          </div>
+          <div class="bg-black/30 rounded-2xl p-4 border border-white/5">
+            <div class="text-sm text-white/40 mb-1">최대 라운드</div>
+            <div class="text-3xl font-bold text-white">1</div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <button class="btn-primary w-full" id="btn-retry">다시 플레이</button>
+          <button class="btn-ghost w-full" id="btn-home">홈으로 돌아가기</button>
+        </div>
+      </div>
+
+    </main>
   </div>
 
   <script src="game.js"></script>
 </body>
+
 </html>

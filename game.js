@@ -18,16 +18,38 @@ const COMMANDS = [
   { text: '백기 내리지 말고 청기 올려!',  req: [{ flag: 'blue',  act: 'up'   }], forbidden: [{ flag: 'white', act: 'down' }] },
 ];
 
+// Characters
+const CHARACTERS = [
+  { name: '쥐', emoji: '🐭' },
+  { name: '소', emoji: '🐮' },
+  { name: '호랑이', emoji: '🐯' },
+  { name: '토끼', emoji: '🐰' },
+  { name: '용', emoji: '🐲' },
+  { name: '뱀', emoji: '🐍' },
+  { name: '말', emoji: '🐴' },
+  { name: '양', emoji: '🐑' },
+  { name: '원숭이', emoji: '🐵' },
+  { name: '닭', emoji: '🐔' },
+  { name: '개', emoji: '🐶' },
+  { name: '돼지', emoji: '🐷' },
+  // 통계학 특화 캐릭터
+  { name: '우상향', emoji: '📈' },
+  { name: '정규분포', emoji: '🔔' },
+  { name: '확률론', emoji: '🎲' },
+  { name: '통계학도', emoji: '🤓' }
+];
+
 const MAX_LIVES          = 3;
 const BASE_CMD_TIME      = 3000;
 const MIN_CMD_TIME       = 900;
 const SPEED_FACTOR       = 0.94;
 
 // ===========================
-// STATE (immutable pattern — always reassign, never mutate nested)
+// STATE
 // ===========================
 let gs = {
-  mode:         null,   // 'single' | 'multi'
+  mode:         null,
+  character:    '🐰',
   myLives:      MAX_LIVES,
   oppLives:     MAX_LIVES,
   round:        0,
@@ -37,7 +59,7 @@ let gs = {
   cmdTime:      BASE_CMD_TIME,
   cmdTimeoutId: null,
   timerRafId:   null,
-  flagState:    { blue: 'down', white: 'down' },
+  flagState:    { blue: 'middle', white: 'middle' },
   active:       false,
   peer:         null,
   conn:         null,
@@ -74,30 +96,56 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-retry').onclick       = retryGame;
   $('btn-home').onclick        = goHome;
 
-  document.querySelectorAll('.flag-btn').forEach(btn => {
+  document.querySelectorAll('.control-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!gs.active) return;
       handleAction(btn.dataset.flag, btn.dataset.action);
     });
   });
 
-  // Copy peer ID on click
-  $('room-code-display').addEventListener('click', () => {
-    const id = $('room-code-display').dataset.fullId;
-    if (!id) return;
-    navigator.clipboard.writeText(id).then(() => toast('클립보드에 복사됨!')).catch(() => {});
-  });
+  const roomDisplay = $('room-code-display');
+  if(roomDisplay) {
+    roomDisplay.parentElement.addEventListener('click', () => {
+      const id = roomDisplay.dataset.fullId;
+      if (!id) return;
+      navigator.clipboard.writeText(id).then(() => toast('코드가 복사되었습니다!')).catch(() => {});
+    });
+  }
 
-  initHomeDecoration();
+  renderCharacterSelect();
 });
+
+// ===========================
+// CHARACTER SELECTION
+// ===========================
+function renderCharacterSelect() {
+  const container = $('character-select');
+  if(!container) return;
+  container.innerHTML = '';
+
+  CHARACTERS.forEach(z => {
+    const btn = el('button', 'w-10 h-10 text-2xl flex items-center justify-center rounded-xl transition-all ' + (gs.character === z.emoji ? 'bg-white/20 ring-2 ring-blue-500 scale-110' : 'grayscale opacity-60 hover:opacity-100 hover:grayscale-0 hover:bg-white/10'));
+    btn.textContent = z.emoji;
+    btn.title = z.name;
+    btn.onclick = () => selectCharacter(z.emoji);
+    container.appendChild(btn);
+  });
+}
+
+function selectCharacter(emoji) {
+  gs = { ...gs, character: emoji };
+  $('preview-emoji').textContent = emoji;
+  $('game-emoji').textContent = emoji;
+  renderCharacterSelect();
+}
 
 // ===========================
 // SINGLE PLAYER
 // ===========================
 function startSingle() {
   gs = { ...gs, mode: 'single' };
-  $('hud-opponent').style.display = 'none';
-  $('vs-badge').style.display     = 'none';
+  $('hud-opponent').classList.add('opacity-0');
+  $('vs-badge').classList.add('opacity-0');
   initGame();
   showScreen('screen-game');
   startCountdown(beginLoop);
@@ -114,7 +162,7 @@ function initGame() {
     round:       0,
     score:       0,
     cmdTime:     BASE_CMD_TIME,
-    flagState:   { blue: 'down', white: 'down' },
+    flagState:   { blue: 'middle', white: 'middle' },
     active:      false,
     cmd:         null,
     pendingReqs: [],
@@ -124,15 +172,13 @@ function initGame() {
   $('round-display').textContent = 'ROUND 1';
   $('score-display').textContent = 'SCORE 0';
   $('command-text').textContent  = '준비...';
-  $('command-text').className    = 'command-text';
+  $('command-text').className    = 'text-3xl sm:text-4xl font-black tracking-tight'; // reset
   updateFlagVisuals();
 
-  // Build timer bar
-  const timerEl = $('command-timer');
-  timerEl.innerHTML = '';
-  const bar = el('div', 'command-timer-bar');
-  bar.style.width = '100%';
-  timerEl.appendChild(bar);
+  // Reset Timer Bar
+  const timerBar = $('command-timer');
+  timerBar.style.width = '100%';
+  timerBar.style.backgroundColor = '#3B82F6';
 }
 
 // ===========================
@@ -165,7 +211,12 @@ function nextCommand() {
 
   const round   = gs.round + 1;
   const cmdTime = round > 1 ? Math.max(MIN_CMD_TIME, gs.cmdTime * SPEED_FACTOR) : gs.cmdTime;
-  const cmd     = COMMANDS[Math.floor(Math.random() * COMMANDS.length)];
+  
+  // Only select commands that require a state change.
+  const validCmds = COMMANDS.filter(c => c.req.some(r => gs.flagState[r.flag] !== r.act));
+  const cmd       = validCmds.length > 0 
+    ? validCmds[Math.floor(Math.random() * validCmds.length)]
+    : COMMANDS[0];
 
   gs = { ...gs, round, cmdTime, cmd, pendingReqs: [...cmd.req] };
 
@@ -189,9 +240,9 @@ function nextCommand() {
 }
 
 function showCommand(text) {
-  const el = $('command-text');
-  el.textContent = text;
-  el.className   = 'command-text';
+  const ctext = $('command-text');
+  ctext.textContent = text;
+  ctext.classList.remove('cmd-wrong', 'cmd-correct');
 }
 
 function speak(text) {
@@ -200,29 +251,27 @@ function speak(text) {
   const u  = new SpeechSynthesisUtterance(text);
   u.lang   = 'ko-KR';
   u.rate   = 1.0 + (BASE_CMD_TIME - gs.cmdTime) / BASE_CMD_TIME * 0.5;
-  u.pitch  = 1.1;
+  u.pitch  = 1.2;
   window.speechSynthesis.speak(u);
 }
 
 function startTimer(duration) {
   cancelAnimationFrame(gs.timerRafId);
-  const bar   = $('command-timer').querySelector('.command-timer-bar');
+  const bar = $('command-timer');
   if (!bar) return;
   const start = performance.now();
   function frame(now) {
     const elapsed = now - start;
     const pct     = Math.max(0, 1 - elapsed / duration);
     bar.style.width = (pct * 100) + '%';
-    bar.style.background = pct > 0.4
-      ? `linear-gradient(90deg, var(--blue), var(--blue-light))`
-      : `linear-gradient(90deg, var(--danger), #ff6b7a)`;
+    bar.style.backgroundColor = pct > 0.4 ? '#3B82F6' : '#EF4444';
     if (pct > 0 && gs.active) gs = { ...gs, timerRafId: requestAnimationFrame(frame) };
   }
   gs = { ...gs, timerRafId: requestAnimationFrame(frame) };
 }
 
 // ===========================
-// FLAG ACTIONS
+// FLAG ACTIONS & SVG ANIMATION
 // ===========================
 function handleAction(flag, act) {
   const { cmd, flagState, pendingReqs } = gs;
@@ -256,10 +305,35 @@ function handleAction(flag, act) {
 }
 
 function updateFlagVisuals() {
-  const blueCloth  = document.querySelector('#flag-blue-visual .flag-cloth');
-  const whiteCloth = document.querySelector('#flag-white-visual .flag-cloth');
-  blueCloth  && blueCloth.classList.toggle('flag-down',  gs.flagState.blue  === 'down');
-  whiteCloth && whiteCloth.classList.toggle('flag-down', gs.flagState.white === 'down');
+  const armBlue  = $('arm-blue');
+  const armWhite = $('arm-white');
+  
+  if(armBlue) {
+    armBlue.classList.remove('arm-down', 'arm-up', 'arm-middle');
+    armBlue.classList.add('arm-' + gs.flagState.blue);
+  }
+  if(armWhite) {
+    armWhite.classList.remove('arm-down', 'arm-up', 'arm-middle');
+    armWhite.classList.add('arm-' + gs.flagState.white);
+  }
+}
+
+// ===========================
+// REACTIONS
+// ===========================
+function triggerReaction(type) {
+  const body = $('rabbit-body');
+  if (!body) return;
+  body.classList.remove('rabbit-shock', 'rabbit-happy');
+  void body.offsetWidth; // force reflow
+  body.classList.add(`rabbit-${type}`);
+}
+
+function flashCmd(cls) {
+  const el = $('command-text');
+  el.classList.remove('cmd-wrong', 'cmd-correct');
+  void el.offsetWidth;
+  el.classList.add(cls);
 }
 
 // ===========================
@@ -269,16 +343,22 @@ function correct() {
   const score = gs.score + 10 + gs.round;
   gs = { ...gs, score };
   $('score-display').textContent = `SCORE ${score}`;
-  flashCmd('flash-correct');
-  setTimeout(nextCommand, 350);
+  
+  triggerReaction('happy');
+  flashCmd('cmd-correct');
+  
+  setTimeout(nextCommand, 400);
 }
 
 function mistake() {
   if (!gs.active) return;
   const myLives = gs.myLives - 1;
   gs = { ...gs, myLives };
+  
   renderHearts('hearts-me', myLives);
-  flashCmd('flash-wrong');
+  triggerReaction('shock');
+  flashCmd('cmd-wrong');
+  
   clearTimeout(gs.cmdTimeoutId);
   cancelAnimationFrame(gs.timerRafId);
 
@@ -294,16 +374,12 @@ function mistake() {
   }
 }
 
-function flashCmd(cls) {
-  const el = $('command-text');
-  el.className = `command-text ${cls}`;
-}
-
 // ===========================
 // HEARTS
 // ===========================
 function renderHearts(containerId, lives) {
   const container = $(containerId);
+  if(!container) return;
   container.innerHTML = '';
   for (let i = 0; i < MAX_LIVES; i++) {
     const h = el('span', 'heart' + (i >= lives ? ' lost' : ' heart-bounce'), '❤️');
@@ -324,16 +400,16 @@ function endGame(win, draw = false) {
   $('result-title').textContent = draw ? '무승부!' : win ? '승리!' : '패배...';
   $('result-sub').textContent   = win
     ? `${gs.round}라운드까지 버텼습니다!`
-    : `${gs.round}라운드에서 탈락했습니다.`;
+    : `${gs.round}라운드에서 토끼가 헷갈려버렸습니다.`;
 
   $('result-stats').innerHTML = `
-    <div class="stat-row">
-      <span class="stat-label">최종 점수</span>
-      <span class="stat-value">${gs.score}</span>
+    <div class="bg-black/30 rounded-2xl p-4 border border-white/5">
+      <div class="text-sm text-white/40 mb-1">최종 점수</div>
+      <div class="text-3xl font-bold text-blue-400">${gs.score}</div>
     </div>
-    <div class="stat-row">
-      <span class="stat-label">최대 라운드</span>
-      <span class="stat-value">${gs.round}</span>
+    <div class="bg-black/30 rounded-2xl p-4 border border-white/5">
+      <div class="text-sm text-white/40 mb-1">최대 라운드</div>
+      <div class="text-3xl font-bold text-white">${gs.round}</div>
     </div>
   `;
   showScreen('screen-result');
@@ -373,7 +449,7 @@ function createRoom() {
   peer.on('open', id => {
     $('room-code-display').textContent       = id;
     $('room-code-display').dataset.fullId    = id;
-    $('waiting-title').textContent           = '방 코드 (클릭하여 복사)';
+    $('waiting-title').textContent           = '코드가 생성되었습니다';
     $('waiting-desc').textContent            = '상대방에게 이 코드를 공유하세요';
   });
 
@@ -400,7 +476,7 @@ function joinRoom() {
   showScreen('screen-waiting');
   $('waiting-title').textContent    = '연결 중...';
   $('room-code-display').textContent = '';
-  $('waiting-desc').textContent     = '상대방 방에 연결 중입니다...';
+  $('waiting-desc').textContent     = '연결을 시도하는 중입니다...';
 
   const peer = new Peer(undefined, { debug: 1 });
   gs = { ...gs, peer, isHost: false };
@@ -410,13 +486,13 @@ function joinRoom() {
     gs = { ...gs, conn };
     setupConn(conn);
     conn.on('open', () => {
-      $('waiting-title').textContent = '연결 성공! 호스트를 기다리는 중...';
-      $('waiting-desc').textContent  = '상대방이 게임을 시작할 때까지 대기해주세요';
+      $('waiting-title').textContent = '연결 성공! 시작을 기다립니다.';
+      $('waiting-desc').textContent  = '호스트가 게임을 시작할 때까지 대기해주세요';
     });
   });
 
   peer.on('error', err => {
-    toast('연결 실패: ' + err.type + ' — 코드를 다시 확인해주세요');
+    toast('연결 실패 (' + err.type + ') 코드를 확인해주세요.');
     showScreen('screen-lobby');
   });
 }
@@ -432,7 +508,6 @@ function cancelWaiting() {
 function setupConn(conn) {
   conn.on('data', data => {
     if (data.type === 'cmd' && !gs.isHost) {
-      // Guest receives command from host
       const cmd = COMMANDS[data.idx];
       gs = { ...gs, cmd, pendingReqs: [...cmd.req], cmdTime: data.cmdTime };
 
@@ -482,8 +557,8 @@ function setupConn(conn) {
 // ===========================
 function startMulti() {
   gs = { ...gs, mode: 'multi' };
-  $('hud-opponent').style.display = '';
-  $('vs-badge').style.display     = '';
+  $('hud-opponent').classList.remove('opacity-0');
+  $('vs-badge').classList.remove('opacity-0');
   initGame();
   showScreen('screen-game');
 
@@ -495,58 +570,9 @@ function startMulti() {
 
 function startMultiClient() {
   gs = { ...gs, mode: 'multi' };
-  $('hud-opponent').style.display = '';
-  $('vs-badge').style.display     = '';
+  $('hud-opponent').classList.remove('opacity-0');
+  $('vs-badge').classList.remove('opacity-0');
   initGame();
   showScreen('screen-game');
   startCountdown(() => { gs = { ...gs, active: true }; });
-}
-
-// ===========================
-// HOME DECORATION (canvas particles)
-// ===========================
-function initHomeDecoration() {
-  const screen = $('screen-home');
-  const canvas = document.createElement('canvas');
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.12;';
-  screen.prepend(canvas);
-
-  const ctx = canvas.getContext('2d');
-  let W, H, particles;
-
-  function resize() {
-    W = canvas.width  = screen.offsetWidth  || window.innerWidth;
-    H = canvas.height = screen.offsetHeight || window.innerHeight;
-  }
-
-  function makeParticles() {
-    return Array.from({ length: 40 }, () => ({
-      x:     Math.random() * W,
-      y:     Math.random() * H,
-      r:     Math.random() * 2.5 + 0.5,
-      speed: Math.random() * 0.6 + 0.15,
-      color: Math.random() > 0.5 ? '#1A6FFF' : '#F0F4FF',
-      drift: (Math.random() - 0.5) * 0.3,
-    }));
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    particles = particles.map(p => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
-      ctx.fill();
-      const newY = p.y - p.speed;
-      const newX = p.x + p.drift;
-      if (newY + p.r < 0) return { ...p, y: H + p.r, x: Math.random() * W };
-      return { ...p, y: newY, x: newX };
-    });
-    requestAnimationFrame(draw);
-  }
-
-  resize();
-  particles = makeParticles();
-  window.addEventListener('resize', () => { resize(); particles = makeParticles(); });
-  draw();
 }
